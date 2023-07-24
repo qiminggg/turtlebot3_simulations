@@ -21,9 +21,7 @@
 
 using namespace std::chrono_literals;
 
-Turtlebot3Fake::Turtlebot3Fake()
-: Node("turtlebot3_fake_node")
-{
+Turtlebot3Fake::Turtlebot3Fake() : Node("turtlebot3_fake_node") {
   /************************************************************
   ** Initialise ROS parameters
   ************************************************************/
@@ -40,37 +38,36 @@ Turtlebot3Fake::Turtlebot3Fake()
   auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
 
   // Initialise publishers
+  location_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
+      "base_location", 1);
   odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("odom", qos);
-  joint_states_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("joint_states", qos);
+  joint_states_pub_ =
+      this->create_publisher<sensor_msgs::msg::JointState>("joint_states", qos);
   tf_pub_ = this->create_publisher<tf2_msgs::msg::TFMessage>("tf", qos);
 
   // Initialise subscribers
   cmd_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
-    "cmd_vel", \
-    qos, \
-    std::bind(
-      &Turtlebot3Fake::command_velocity_callback, \
-      this, \
-      std::placeholders::_1));
+      "cmd_vel", qos,
+      std::bind(&Turtlebot3Fake::command_velocity_callback, this,
+                std::placeholders::_1));
 
   /************************************************************
   ** initialise ROS timers
   ************************************************************/
-  update_timer_ = this->create_wall_timer(10ms, std::bind(&Turtlebot3Fake::update_callback, this));
+  update_timer_ = this->create_wall_timer(
+      10ms, std::bind(&Turtlebot3Fake::update_callback, this));
 
   RCLCPP_INFO(this->get_logger(), "Turtlebot3 fake node has been initialised");
 }
 
-Turtlebot3Fake::~Turtlebot3Fake()
-{
+Turtlebot3Fake::~Turtlebot3Fake() {
   RCLCPP_INFO(this->get_logger(), "Turtlebot3 fake node has been terminated");
 }
 
 /********************************************************************************
 ** Init functions
 ********************************************************************************/
-void Turtlebot3Fake::init_parameters()
-{
+void Turtlebot3Fake::init_parameters() {
   // Declare parameters that may be set on this node
   this->declare_parameter("joint_states_frame");
   this->declare_parameter("odom_frame");
@@ -80,17 +77,16 @@ void Turtlebot3Fake::init_parameters()
 
   // Get parameters from yaml
   this->get_parameter_or<std::string>(
-    "joint_states_frame", \
-    joint_states_.header.frame_id, \
-    "base_footprint");
-  this->get_parameter_or<std::string>("odom_frame", odom_.header.frame_id, "odom");
-  this->get_parameter_or<std::string>("base_frame", odom_.child_frame_id, "base_footprint");
+      "joint_states_frame", joint_states_.header.frame_id, "base_footprint");
+  this->get_parameter_or<std::string>("odom_frame", odom_.header.frame_id,
+                                      "odom");
+  this->get_parameter_or<std::string>("base_frame", odom_.child_frame_id,
+                                      "base_footprint");
   this->get_parameter_or<double>("wheels.separation", wheel_seperation_, 0.0);
   this->get_parameter_or<double>("wheels.radius", wheel_radius_, 0.0);
 }
 
-void Turtlebot3Fake::init_variables()
-{
+void Turtlebot3Fake::init_variables() {
   // Initialise variables
   wheel_speed_cmd_[LEFT] = 0.0;
   wheel_speed_cmd_[RIGHT] = 0.0;
@@ -112,8 +108,8 @@ void Turtlebot3Fake::init_variables()
   // memcpy(&(odom_.pose.covariance), pcov, sizeof(double)*36);
   // memcpy(&(odom_.twist.covariance), pcov, sizeof(double)*36);
 
-  odom_pose_[0] = 0.0;
-  odom_pose_[1] = 0.0;
+  odom_pose_[0] = 19.56;
+  odom_pose_[1] = 13.908;
   odom_pose_[2] = 0.0;
   odom_vel_[0] = 0.0;
   odom_vel_[1] = 0.0;
@@ -133,23 +129,22 @@ void Turtlebot3Fake::init_variables()
 ** Callback functions for ROS subscribers
 ********************************************************************************/
 void Turtlebot3Fake::command_velocity_callback(
-  const geometry_msgs::msg::Twist::SharedPtr cmd_vel_msg)
-{
+    const geometry_msgs::msg::Twist::SharedPtr cmd_vel_msg) {
   last_cmd_vel_time_ = this->now();
 
   goal_linear_velocity_ = cmd_vel_msg->linear.x;
   goal_angular_velocity_ = cmd_vel_msg->angular.z;
 
-  wheel_speed_cmd_[LEFT] = goal_linear_velocity_ - (goal_angular_velocity_ * wheel_seperation_ / 2);
-  wheel_speed_cmd_[RIGHT] = goal_linear_velocity_ + \
-    (goal_angular_velocity_ * wheel_seperation_ / 2);
+  wheel_speed_cmd_[LEFT] =
+      goal_linear_velocity_ - (goal_angular_velocity_ * wheel_seperation_ / 2);
+  wheel_speed_cmd_[RIGHT] =
+      goal_linear_velocity_ + (goal_angular_velocity_ * wheel_seperation_ / 2);
 }
 
 /********************************************************************************
 ** Update functions
 ********************************************************************************/
-void Turtlebot3Fake::update_callback()
-{
+void Turtlebot3Fake::update_callback() {
   rclcpp::Time time_now = this->now();
   rclcpp::Duration duration(time_now - prev_update_time_);
   prev_update_time_ = time_now;
@@ -165,6 +160,18 @@ void Turtlebot3Fake::update_callback()
   odom_.header.stamp = time_now;
   odom_pub_->publish(odom_);
 
+  // location
+  location_.header.stamp = time_now;
+  location_.header.frame_id = "map";
+  location_.pose.position.x = odom_.pose.pose.position.x;
+  location_.pose.position.y = odom_.pose.pose.position.y;
+  location_.pose.position.z = odom_.pose.pose.position.z;
+  location_.pose.orientation.x = odom_.pose.pose.orientation.x;
+  location_.pose.orientation.y = odom_.pose.pose.orientation.y;
+  location_.pose.orientation.z = odom_.pose.pose.orientation.z;
+  location_.pose.orientation.w = odom_.pose.pose.orientation.w;
+  location_pub_->publish(location_);
+
   // joint_states
   update_joint_state();
   joint_states_.header.stamp = time_now;
@@ -178,8 +185,7 @@ void Turtlebot3Fake::update_callback()
   tf_pub_->publish(odom_tf_msg);
 }
 
-bool Turtlebot3Fake::update_odometry(const rclcpp::Duration & duration)
-{
+bool Turtlebot3Fake::update_odometry(const rclcpp::Duration& duration) {
   double wheel_l, wheel_r;  // rotation value of wheel [rad]
   double delta_s, delta_theta;
   double v[2], w[2];
@@ -221,7 +227,7 @@ bool Turtlebot3Fake::update_odometry(const rclcpp::Duration & duration)
   odom_pose_[2] += delta_theta;
 
   // compute odometric instantaneouse velocity
-  odom_vel_[0] = delta_s / step_time;     // v
+  odom_vel_[0] = delta_s / step_time;  // v
   odom_vel_[1] = 0.0;
   odom_vel_[2] = delta_theta / step_time;  // w
 
@@ -244,16 +250,14 @@ bool Turtlebot3Fake::update_odometry(const rclcpp::Duration & duration)
   return true;
 }
 
-void Turtlebot3Fake::update_joint_state()
-{
+void Turtlebot3Fake::update_joint_state() {
   joint_states_.position[LEFT] = last_position_[LEFT];
   joint_states_.position[RIGHT] = last_position_[RIGHT];
   joint_states_.velocity[LEFT] = last_velocity_[LEFT];
   joint_states_.velocity[RIGHT] = last_velocity_[RIGHT];
 }
 
-void Turtlebot3Fake::update_tf(geometry_msgs::msg::TransformStamped & odom_tf)
-{
+void Turtlebot3Fake::update_tf(geometry_msgs::msg::TransformStamped& odom_tf) {
   odom_tf.header = odom_.header;
   odom_tf.child_frame_id = odom_.child_frame_id;
   odom_tf.transform.translation.x = odom_.pose.pose.position.x;
@@ -265,8 +269,7 @@ void Turtlebot3Fake::update_tf(geometry_msgs::msg::TransformStamped & odom_tf)
 /*****************************************************************************
 ** Main
 *****************************************************************************/
-int main(int argc, char ** argv)
-{
+int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<Turtlebot3Fake>());
   rclcpp::shutdown();

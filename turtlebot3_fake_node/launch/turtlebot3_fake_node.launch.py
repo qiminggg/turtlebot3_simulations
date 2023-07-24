@@ -57,8 +57,8 @@ def generate_launch_description():
             default_value=param_dir,
             description='Specifying parameter direction'),
 
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([rviz_dir, '/rviz2.launch.py'])),
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource([rviz_dir, '/rviz2.launch.py'])),
 
         Node(
             package='turtlebot3_fake_node',
@@ -73,4 +73,13 @@ def generate_launch_description():
             output='screen',
             parameters=[{'use_sim_time': use_sim_time}],
             arguments=[urdf]),
+
+
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='static_map_base',
+            output='screen',
+            # x y z yaw pitch roll frame_id child_frame_id
+            arguments=["0", "0", "0", "0", "0", "0", "map", "odom"]),
     ])

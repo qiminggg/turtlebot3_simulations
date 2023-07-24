@@ -23,10 +23,11 @@
 
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "tf2_msgs/msg/tf_message.hpp"
-#include "turtlebot3_msgs/msg/sensor_state.hpp"
+// #include "turtlebot3_msgs/msg/sensor_state.hpp"
 
 #define LEFT 0
 #define RIGHT 1
@@ -46,6 +47,7 @@ private:
   rclcpp::TimerBase::SharedPtr update_timer_;
 
   // ROS topic publishers
+  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr location_pub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_states_pub_;
   rclcpp::Publisher<tf2_msgs::msg::TFMessage>::SharedPtr tf_pub_;
@@ -55,6 +57,7 @@ private:
 
 
   nav_msgs::msg::Odometry odom_;
+  geometry_msgs::msg::PoseStamped location_;
   sensor_msgs::msg::JointState joint_states_;
 
   double wheel_speed_cmd_[2];
